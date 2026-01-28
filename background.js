@@ -4,21 +4,33 @@ async function setDownloadUrl(url) {
 
 chrome.webRequest.onCompleted.addListener(async (details) => {
     const url = details.url;
-    
-    if (!url.includes("kaltura.com") || !url.endsWith(".ts")) {
-        return null;
+
+    if (!url.includes("kaltura.com")) {
+        return;
     }
 
-    const downloadUrl = url.replace("/hls", "").replace(/\/seg-[^/]+\.ts$/, "");
+    let parsed;
+    try {
+        parsed = new URL(url);
+    } catch {
+        return;
+    }
 
-    // this means downloadUrl will basically always be the highest .ts segment (lower segments are audio only)
+    // pathname does NOT include ?Policy=... etc
+    if (!parsed.pathname.endsWith(".ts")) {
+        return;
+    }
+
+    const downloadUrl = url
+        .replace("/hls", "")
+        .replace(/\/seg-[^/]+\.ts(\?.*)?$/, "");
+
     console.log(`FOUND URL: ${downloadUrl}`);
     await setDownloadUrl(downloadUrl);
 },
-{ 
+{
     urls: ["<all_urls>"]
 });
-
 
 // clear the url if tab is changed
 chrome.tabs.onActivated.addListener(async (activeInfo) => {
